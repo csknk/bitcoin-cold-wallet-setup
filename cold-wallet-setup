@@ -1,0 +1,69 @@
+#!/bin/bash
+# Open a Bitcoin Core cold wallet in an offline Tails session.
+# This script runs a simple zenity GUI which prompts the user to select:
+# - The cold wallet file
+# - The `bitcoin-qt` binary
+# Both of these files will probably be on your persistent volume.
+# ------------------------------------------------------------------------------
+function set_cold_wallet() {
+  WALLET_FILE=$(zenity --file-selection --title="Select a Cold Wallet to run." --filename=${PWD})
+  case $? in
+    0)
+    echo "\"$WALLET_FILE\" selected.";;
+    1)
+    echo "No file selected.";;
+    -1)
+    echo "An unexpected error has occurred.";;
+  esac
+}
+
+function set_bitcoin_binary() {
+  BITCOIN_CORE=$(zenity --file-selection --title="Select the bitcoin-qt binary." --filename=${PWD}/)
+  case $? in
+    0)
+    echo "\"$BITCOIN_CORE\" selected.";;
+    1)
+    echo "No file selected.";;
+    -1)
+    echo "An unexpected error has occurred.";;
+  esac
+}
+
+function create_symlink() {
+  BITCOIN_DIR=~/.bitcoin
+  if [[ ! -d "${BITCOIN_DIR}" ]]; then
+    echo "Creating ${BITCOIN_DIR}"
+    echo ""
+    mkdir ${BITCOIN_DIR}
+  fi
+
+  if [[ -L "${BITCOIN_DIR}"/cold-wallet.dat ]]; then
+    echo "Remove exisiting symlink, ${BITCOIN_DIR}/cold-wallet.dat"
+    rm ${BITCOIN_DIR}/cold-wallet.dat
+  fi
+
+  echo "Make a symlink ${BITCOIN_DIR}/cold-wallet.dat pointing to ${WALLET_FILE}"
+  ln -s ${WALLET_FILE} ${BITCOIN_DIR}/cold-wallet.dat
+}
+
+function run_wallet() {
+  echo "Starting Bitcoin Core with wallet ${WALLET_FILE}"
+  ${BITCOIN_CORE} -wallet=cold-wallet.dat
+}
+
+# Run this script
+# ------------------------------------------------------------------------------
+echo "ONLY RUN IN A COLD ENVIRONMENT."
+read -p "Do you wish to proceed? [y/N]" PROCEED
+case $PROCEED in
+  [Yy]* )
+  set_cold_wallet
+  set_bitcoin_binary
+  create_symlink
+  run_wallet
+  ;;
+  [Nn]* )
+  echo "END"
+  ;;
+  * ) echo "Please answer yes or no.";;
+esac
